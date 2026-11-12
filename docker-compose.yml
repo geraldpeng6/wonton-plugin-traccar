@@ -75,8 +75,6 @@ x-wonton:
   webui:
     service: traccar
     port: 8082
-    # 直达上游的 OIDC 起点：打开网页就跳核心登录，登录后回到地图。
-    path: /api/session/openid/auth
     sso: oidc
     oidc:
       redirect_paths: [/api/session/openid/callback]
