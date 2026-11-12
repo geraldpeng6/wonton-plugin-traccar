@@ -41,9 +41,9 @@ services:
       start_interval: 2s
 
 x-wonton:
-  spec: "0.11"
+  spec: "0.13"
   id: org.traccar.traccar
-  version: 0.1.1
+  version: 0.1.2
   kind: app
   title: { en: Traccar }
   description:
@@ -72,8 +72,8 @@ x-wonton:
 
       Install Traccar Client (or the OsmAnd tracking plugin) on a phone, enter the server's LAN address, and it reports. Dedicated trackers connect to the same address and port. Position reporting works on the home LAN only: once a device leaves the home network its location stops updating, while the map page itself opens from anywhere.
   release_notes:
-    zh: 清单去掉 owner_groups：登录时不再给主人加 admin 组，主人在应用里不再自动是管理员。
-    en: "Drop owner_groups from the manifest: sign-in no longer adds the admin group for the owner, so the owner is no longer an app admin automatically."
+    zh: 管理员登录时带 admin 组，在应用里是管理员（清单改用规范 0.13 的 admin_groups）。
+    en: "Admins sign in with the admin group and are admins in the app again (the manifest uses admin_groups from spec 0.13)."
   webui:
     service: traccar
     port: 8082
@@ -83,6 +83,7 @@ x-wonton:
     sso: oidc
     oidc:
       redirect_paths: [/api/session/openid/callback]
+      admin_groups: [admin]
   # 设备上报端口开在局域网：家里和同网的设备直接连，连接不经核心登录，上游协议自带设备编号认设备。
   # 只发布 TCP：上游 6.17 的 OsmAnd 解码器只处理 HTTP over TCP（手机客户端也是 HTTP GET），
   # 协议里的 UDP 通道不解码（实测发包不产生定位），不发布。
