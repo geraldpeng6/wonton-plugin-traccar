@@ -19,7 +19,7 @@ services:
       # 上游数据库里 registration 默认 false，家人经核心认证后首次登录会被拒；
       # 打开这个开关才给他们自动建号（都是核心认证过的家庭成员）。
       OPENID_ALLOW_REGISTRATION: "true"
-      # 核心给主人额外发 admin 组（webui.oidc.owner_groups），上游按组授管理员。
+      # 带 admin 组的人上游授管理员。
       OPENID_ADMIN_GROUP: admin
       # 默认 geocoder（locationiq）要 API key，没有 key 每个定位点都会报错；默认关掉，
       # 要地址的用户改 geocoder.* 配置（见 README）。
@@ -43,7 +43,7 @@ services:
 x-wonton:
   spec: "0.11"
   id: org.traccar.traccar
-  version: 0.1.0
+  version: 0.1.1
   kind: app
   title: { en: Traccar }
   description:
@@ -71,7 +71,9 @@ x-wonton:
       First use: open the web page, add a device, and enter its unique identifier into the tracker or phone app. Positions then appear on the map. You can draw geofences and get notified when they are crossed (email, Telegram and other channels, configured in the web page).
 
       Install Traccar Client (or the OsmAnd tracking plugin) on a phone, enter the server's LAN address, and it reports. Dedicated trackers connect to the same address and port. Position reporting works on the home LAN only: once a device leaves the home network its location stops updating, while the map page itself opens from anywhere.
-  release_notes: { zh: 首个版本。, en: Initial release. }
+  release_notes:
+    zh: 清单去掉 owner_groups：登录时不再给主人加 admin 组，主人在应用里不再自动是管理员。
+    en: "Drop owner_groups from the manifest: sign-in no longer adds the admin group for the owner, so the owner is no longer an app admin automatically."
   webui:
     service: traccar
     port: 8082
@@ -81,7 +83,6 @@ x-wonton:
     sso: oidc
     oidc:
       redirect_paths: [/api/session/openid/callback]
-      owner_groups: [admin]
   # 设备上报端口开在局域网：家里和同网的设备直接连，连接不经核心登录，上游协议自带设备编号认设备。
   # 只发布 TCP：上游 6.17 的 OsmAnd 解码器只处理 HTTP over TCP（手机客户端也是 HTTP GET），
   # 协议里的 UDP 通道不解码（实测发包不产生定位），不发布。
