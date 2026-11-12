@@ -9,14 +9,6 @@ Traccar 标志
       不带透明边、圆角或阴影。云吞与其无关，也不暗示得到 Traccar 官方认可；Traccar 名称和标志
       归其项目所有。
 
-入口垫片镜像（Traefik）
-=======================
-
-镜像：ghcr.io/traefik/traefik:v3.2（按清单列表摘要固定，见 docker-compose.yml）
-用途：只改写登录跳转请求的 Accept 头（见 sso-entry.yml），其余流量原样透传给 Traccar。
-版权：Traefik Labs（github.com/traefik/traefik），按 MIT 许可发布；本仓库不改其代码，
-      只提供一份运行配置（sso-entry.yml）。云吞与其无关。
-
 上游许可证全文（Apache License 2.0）：
 
                                  Apache License
