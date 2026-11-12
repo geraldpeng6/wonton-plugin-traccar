@@ -1,43 +1,35 @@
-# 云吞插件模板
+# 定位地图（Traccar）
 
-开发流程见[插件开发指南](https://github.com/wontonapp/wonton-docs/blob/main/develop.md)。
+像一张全家共用的定位地图：给车、老人、孩子和宠物装上定位器后，在地图上看他们在哪、走过哪里，进出电子围栏时收到提醒。
 
-这是一个能安装的示例插件 `app.example.hello`：使用 nginx 官方镜像显示问候页，经网关的 `sso: proxy` 注入用户名，页面显示“你好，<用户名>”。示例没有应用账号、持久化数据或 MCP 工具。
+## 怎么用
 
-## 示例文件
+1. 打开插件网页，点“添加设备”，给它起个名字，记下**唯一编号**（identifier，自己定的一串数字或字母）。
+2. 让设备把位置报到这台服务器：
+   - **手机**：装 [Traccar Client](https://www.traccar.org/client/)（或 OsmAnd 的跟踪插件），服务器地址填这台主机的局域网地址，端口 `5055`，设备编号填上面记下的。
+   - **车载定位器**（GT06 协议，Concox 等国产定位器常用）：服务器地址填局域网地址，端口 `5023`。
+   - **手表、项圈**（H02 协议常见）：端口 `5013`。
+   - 其它协议的定位器需要开对应端口时，参考上游的[协议端口表](https://www.traccar.org/ports/)，在插件仓库提 issue 说明设备型号。
+3. 地图上出现设备的最新位置；历史轨迹、报表、电子围栏都在网页里。
 
-| 路径 | 内容 |
-| --- | --- |
-| `docker-compose.yml` | 示例清单、nginx 服务和三个 `configs` |
-| `web/default.conf.template` | nginx 配置，启用 SSI 回显用户名并提供健康检查入口；只放行来自核心地址（`${WONTON_CORE_ADDRESS}`）的请求，其余来源 403 |
-| `web/index.html` | 问候页 |
-| `web/tokens.css` | 页面主题变量的后备值 |
-| `tabs/` | 示例主页的应用页面图标 |
-| `screenshots/home.png` | 商店详情页的示例截图 |
-| `scripts/smoke-probes.sh` | 检查真实页面和网关注入身份的插件探针 |
+数据（位置、轨迹、账号）都保存在这台服务器上，不经过第三方。
 
-从模板创建自己的插件后，替换示例清单、网页和素材；具体步骤见[写插件](https://github.com/wontonapp/wonton-docs/blob/main/develop.md#写插件)。
+## 在家外面用不了（如实说明）
 
-## 对着别的栈跑探针
+定位上报端口只开在家里局域网：手机和设备要么连家里 Wi-Fi，要么和服务器在同一网络。**人带着设备出门后，位置就不再更新**——定位上报端口不开在公网上。网页地图本身在任何地方都能打开（经云吞网关登录）。
 
-`probes`、`api`、`session` 按 `.wonton/.env` 的 `WONTON_BASE_DOMAIN` 拼核心地址，`up` 起的栈自己写这个键。插件装进别人的栈、或者对着已有环境排查时，把那套栈的基础域名写进 `.wonton/.env`，不要只按实例名猜地址：实例名只是资源名前缀，网关按 Host 认域名，拼错了会回“没有安装”。
+## 登录和账号
 
-```bash
-WONTON_BASE_DOMAIN=wonton.localhost
-```
+打开网页经云吞登录，不再输一次密码。主人自动是管理员；家人打开网页会自动建自己的账号（普通用户，能看地图、加自己的设备）。地址、轨迹等数据由管理员在网页里共享给家人。
 
-## 核心镜像
+## 给 Agent 和自动化
 
-检查和冒烟默认用套件里的核心镜像（`ghcr.io/wontonapp/wonton-core:main`）；要固定别的核心镜像，在仓库 Settings → Variables 设 `WONTON_CORE_IMAGE`，手动触发“检查”时填的 `core-image` 输入优先。
+Traccar 有完整的 REST API（`/api/devices`、`/api/positions`、`/api/reports/*`），在网页的账号设置里生成 API 令牌即可调用。注意：令牌等敏感信息不要交给不可信的一方。
 
-## 更新开发套件
+## 位置显示地址（可选）
 
-```bash
-scripts/dev.sh kit-update
-```
-
-在从模板新建的插件仓库中更新套件；本仓库是套件源头，执行时只提示并退出。版本、可选引用和自定义脚本约定见[开发指南](https://github.com/wontonapp/wonton-docs/blob/main/develop.md#更新开发套件)。
+默认只显示坐标，不查地址。要显示地址需自备一个反向地理编码服务：在上游 `traccar.xml` 配置 `geocoder.enable=true` 并选服务商（多数要 API key）。插件默认关闭它，避免不存在的服务一直报错。
 
 ## 图标
 
-`icon.svg` 是本仓库原创线条图标，按本仓库 MIT 许可证分发，见 [NOTICE](NOTICE)。
+图标来自 Traccar 官方标志，来源、许可和商标说明见 [NOTICE](NOTICE)。

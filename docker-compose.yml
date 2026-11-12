@@ -1,78 +1,101 @@
-# 示例插件：nginx 显示一个网页，向登录的人问好。改成自己的应用见 https://github.com/wontonapp/wonton-docs/blob/main/develop.md#写插件。
+# Traccar 定位平台：定位器和手机客户端把位置报进来，网页地图看位置、轨迹和电子围栏。
+# 设备协议端口开在局域网（lan.ports），网页经核心网关 OIDC 登录。
 services:
-  web:
-    # 镜像按摘要固定（多架构镜像写清单列表的摘要），标签只给人看。
-    image: nginx:1.31.8-alpine@sha256:713fc2ebfd92e8217db451477182ee91944b123d2b1ee9fd5a8c6e91ca6c3a11
+  traccar:
+    image: traccar/traccar:6.17.0@sha256:b32d9346adf46df7c33c58577e17ad60f6feadd1f3cd87c876041f6c79317ef1
     environment:
-      # 网关代登录：SSI 回显的 Remote-User 只信核心带来的。官方镜像启动时对 templates 目录里的
-      # *.template 做 envsubst，把下面的地址换进 nginx 配置（见 web/default.conf.template）。
-      WONTON_CORE_ADDRESS: ${WONTON_CORE_ADDRESS}
-    # 包里的文件经 configs 交给容器（核心在启动前写进去），不能用卷挂载。
-    configs:
-      - source: site
-        target: /etc/nginx/templates/default.conf.template
-      - source: page
-        target: /usr/share/nginx/html/index.html
-      - source: tokens
-        target: /usr/share/nginx/html/tokens.css
+      TZ: ${TZ}
+      # 上游约定（Config.java）：设了这个变量后所有配置键都能用环境变量覆盖，
+      # 键名规则是点换下划线、驼峰拆开大写（web.url → WEB_URL）。
+      CONFIG_USE_ENVIRONMENT_VARIABLES: "true"
+      # 上游按 web.url 拼 OIDC 回调（<web.url>/api/session/openid/callback），
+      # 必须和核心登记的回调地址一致。
+      WEB_URL: ${WONTON_APP_URL}
+      OPENID_ISSUER_URL: ${WONTON_OIDC_ISSUER}
+      OPENID_CLIENT_ID: ${WONTON_OIDC_CLIENT_ID}
+      OPENID_CLIENT_SECRET: ${WONTON_OIDC_CLIENT_SECRET}
+      # 跳过 traccar 自己的登录页，直接走核心登录；上游同时停用密码登录（含 Basic 认证）。
+      OPENID_FORCE: "true"
+      # 上游数据库里 registration 默认 false，家人经核心认证后首次登录会被拒；
+      # 打开这个开关才给他们自动建号（都是核心认证过的家庭成员）。
+      OPENID_ALLOW_REGISTRATION: "true"
+      # 核心给主人额外发 admin 组（webui.oidc.owner_groups），上游按组授管理员。
+      OPENID_ADMIN_GROUP: admin
+      # 默认 geocoder（locationiq）要 API key，没有 key 每个定位点都会报错；默认关掉，
+      # 要地址的用户改 geocoder.* 配置（见 README）。
+      GEOCODER_ENABLE: "false"
+      # 上游默认开全部 60 多种协议的端口；只开家用常见的三种：
+      # OsmAnd 5055（手机 Traccar Client / OsmAnd）、GT06 5023（车载定位器）、H02 5013（手表、项圈）。
+      PROTOCOLS_ENABLE: osmand,gt06,h02
+    volumes:
+      # H2 数据库和照片等媒体文件；日志按上游默认写在 ./logs。
+      - ${WONTON_APP_DATA}/data:/opt/traccar/data
+      - ${WONTON_APP_DATA}/logs:/opt/traccar/logs
+    # JVM 按容器内存自动封顶堆（25% ≈ 512M），家庭规模（几个设备）富余。
+    mem_limit: 2G
     healthcheck:
-      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1/healthz"]
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8082/api/server"]
       interval: 30s
       timeout: 5s
-      start_period: 30s
-      start_interval: 1s
-
-configs:
-  site:
-    file: web/default.conf.template
-  page:
-    file: web/index.html
-  tokens:
-    file: web/tokens.css
+      start_period: 60s
+      start_interval: 2s
 
 x-wonton:
-  spec: "0.6"
-  # 换成你自己的：反向域名形式，装上以后不能改。
-  id: app.example.hello
-  version: 0.1.1
+  spec: "0.11"
+  id: org.traccar.traccar
+  version: 0.1.0
   kind: app
-  title: { zh: 你好, en: Hello }
-  description: { zh: 向登录的人问好的示例网页, en: An example page that greets whoever is signed in }
+  title: { en: Traccar }
+  description:
+    zh: 像一张全家共用的定位地图：手机、车载定位器、老人手表和宠物项圈的位置和轨迹都汇到这里看
+    en: "One shared map for the family: see the location and history of phones, car trackers, watches and pet collars"
   icon: icon.svg
   notices: [NOTICE]
-  screenshots: [screenshots/home.png]
-  author: { name: Example }
-  homepage: https://nginx.org
-  # 应用（这里是 nginx）的许可证；插件包自己的许可证写在仓库的 LICENSE 里。
-  license: BSD-2-Clause
+  screenshots: [screenshots/map.jpg]
+  author: { name: geraldpeng6, url: https://github.com/geraldpeng6 }
+  homepage: https://www.traccar.org
+  license: Apache-2.0
   tags:
-    zh: [工具]
-    en: [Tools]
+    zh: [定位, 地图]
+    en: [Location, Map]
   about:
     zh: |
-      一个示例网页：登录以后，页面会向你问好。新建插件时可以照着改。
+      给家里的车、老人、孩子和宠物装上定位器后，在一张地图上看他们在哪、走过哪里。
+
+      第一次用：打开网页加一台设备，拿到设备的唯一编号，填进定位器或手机客户端里，位置就会出现在地图上。可以画电子围栏，进出围栏时给你发通知（支持邮件、Telegram 等渠道，要在网页里配置）。
+
+      手机装 Traccar Client（或 OsmAnd 的跟踪插件）后填这台服务器的局域网地址就能上报。车载定位器、手表这类设备也是连同一个地址和端口。定位上报只开在家里局域网，设备离开家里网络后位置不再更新；网页地图在哪都能打开。
     en: |
-      An example page: once you are signed in, the page says hello. Copy it as a starting point for a new plugin.
-  release_notes: { zh: 名字和说明更新。, en: Product name and description update. }
+      Put trackers on the family car, seniors, kids or pets, and see on one map where they are and where they have been.
+
+      First use: open the web page, add a device, and enter its unique identifier into the tracker or phone app. Positions then appear on the map. You can draw geofences and get notified when they are crossed (email, Telegram and other channels, configured in the web page).
+
+      Install Traccar Client (or the OsmAnd tracking plugin) on a phone, enter the server's LAN address, and it reports. Dedicated trackers connect to the same address and port. Position reporting works on the home LAN only: once a device leaves the home network its location stops updating, while the map page itself opens from anywhere.
+  release_notes: { zh: 首个版本。, en: Initial release. }
   webui:
-    service: web
-    port: 80
-    # 示例页回显网关注入的用户名，见 https://github.com/wontonapp/wonton-docs/blob/main/plugin-spec.md#网关代登录sso-proxy。
-    sso: proxy
-    proxy:
-      headers:
-        Remote-User: "{user}"
-  # 能放进侧边栏“我的应用”的页面，见 https://github.com/wontonapp/wonton-docs/blob/main/plugin-spec.md#应用页面tabs。放不放由用户决定。
-  tabs:
-    - id: home
-      title: { zh: 主页, en: Home }
-      icon: tabs/home.svg
-      icon_selected: tabs/home-fill.svg
-      path: /
-      # 这个页面没做适配，用默认的 inset：从状态栏下沿开始，页面不用管安全区。
-      # 想让内容从状态栏后面滚过，写 layout: edge-to-edge，并用 --wonton-inset-* 留出系统安全区的位置。
-  permissions: []
-  # 上游 nginx 官方镜像，amd64 和 arm64 都有；上游没写最低内存，按本机空闲实测取整（实测约 24M，取 64M）。
+    service: traccar
+    port: 8082
+    # 入口指上游 OIDC 起点：服务端 302 进核心登录链，无 JS 也能走通。
+    # 不能用根路径：SPA 建应用会话靠 JS，curl 型探测走不到。
+    path: /api/session/openid/auth
+    sso: oidc
+    oidc:
+      redirect_paths: [/api/session/openid/callback]
+      owner_groups: [admin]
+  # 设备上报端口开在局域网：家里和同网的设备直接连，连接不经核心登录，上游协议自带设备编号认设备。
+  # 只发布 TCP：上游 6.17 的 OsmAnd 解码器只处理 HTTP over TCP（手机客户端也是 HTTP GET），
+  # 协议里的 UDP 通道不解码（实测发包不产生定位），不发布。
+  lan:
+    ports:
+      - { service: traccar, port: 5055 }
+      - { service: traccar, port: 5023 }
+      - { service: traccar, port: 5013 }
+  permissions:
+    # 把 5055/5023/5013 发布到局域网地址上。
+    - network.lan
+    # 报警通知走用户在网页里配置的渠道（邮件、Telegram 等），这些是容器向外的连接。
+    - network.egress
+  # 镜像多架构（amd64 + arm64，docker buildx imagetools inspect）；上游没写最低内存，按空闲实测取 1G。
   requirements:
     arch: [amd64, arm64]
-    memory: 64M
+    memory: 1G
