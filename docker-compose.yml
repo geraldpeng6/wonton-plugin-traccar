@@ -75,6 +75,9 @@ x-wonton:
   webui:
     service: traccar
     port: 8082
+    # 入口指上游 OIDC 起点：服务端 302 进核心登录链，无 JS 也能走通。
+    # 不能用根路径：SPA 建应用会话靠 JS，curl 型探测走不到。
+    path: /api/session/openid/auth
     sso: oidc
     oidc:
       redirect_paths: [/api/session/openid/callback]
