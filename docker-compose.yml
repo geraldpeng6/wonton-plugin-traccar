@@ -51,7 +51,7 @@ x-wonton:
     en: "One shared map for the family: see the location and history of phones, car trackers, watches and pet collars"
   icon: icon.svg
   notices: [NOTICE]
-  screenshots: [screenshots/map.png]
+  screenshots: [screenshots/map.jpg]
   author: { name: geraldpeng6, url: https://github.com/geraldpeng6 }
   homepage: https://www.traccar.org
   license: Apache-2.0
