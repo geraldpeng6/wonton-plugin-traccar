@@ -64,13 +64,13 @@ x-wonton:
 
       第一次用：打开网页加一台设备，拿到设备的唯一编号，填进定位器或手机客户端里，位置就会出现在地图上。可以画电子围栏，进出围栏时给你发通知（支持邮件、Telegram 等渠道，要在网页里配置）。
 
-      手机装 Traccar Client（或 OsmAnd 的跟踪插件）后填这台服务器的局域网地址就能上报。车载定位器、手表这类设备也是连同一个地址和端口。家外面的设备要能上报，需要公网入口，云吞目前还没有这个能力，所以现在只能在家里（同一局域网）收定位。
+      手机装 Traccar Client（或 OsmAnd 的跟踪插件）后填这台服务器的局域网地址就能上报。车载定位器、手表这类设备也是连同一个地址和端口。定位上报只开在家里局域网，设备离开家里网络后位置不再更新；网页地图在哪都能打开。
     en: |
       Put trackers on the family car, seniors, kids or pets, and see on one map where they are and where they have been.
 
       First use: open the web page, add a device, and enter its unique identifier into the tracker or phone app. Positions then appear on the map. You can draw geofences and get notified when they are crossed (email, Telegram and other channels, configured in the web page).
 
-      Install Traccar Client (or the OsmAnd tracking plugin) on a phone, enter the server's LAN address, and it reports. Dedicated trackers connect to the same address and port. Reporting from outside the home needs a public ingress, which Wonton does not offer yet, so positioning currently works only at home on the same LAN.
+      Install Traccar Client (or the OsmAnd tracking plugin) on a phone, enter the server's LAN address, and it reports. Dedicated trackers connect to the same address and port. Position reporting works on the home LAN only: once a device leaves the home network its location stops updating, while the map page itself opens from anywhere.
   release_notes: { zh: 首个版本。, en: Initial release. }
   webui:
     service: traccar
