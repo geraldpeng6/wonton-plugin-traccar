@@ -13,21 +13,28 @@ sso_origin() { # SMOKE_WEB_URL 的 scheme://host:port
   printf '%s' "$SMOKE_WEB_URL" | sed -E 's#^(https?://[^/]+).*$#\1#'
 }
 
-sso_relogin() { # 会话失效时重走登录
+sso_relogin() { # 会话失效时重走登录：固定从上游 OIDC 起点进 SSO 链（SMOKE_WEB_URL 可能只有源，
+  # 从它走只会到 SPA，建不出上游会话）
   curl -sS --noproxy '*' --max-time 120 -o /dev/null -c "$SMOKE_JAR" \
     --data-urlencode "token=$SMOKE_TOKEN" "$SMOKE_BASE/_wonton/login" || return 1
   curl -sS --noproxy '*' --max-time 120 -o /dev/null -L -b "$SMOKE_JAR" -c "$SMOKE_JAR" \
     -H 'Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8' \
-    "$SMOKE_WEB_URL"
+    -w '%{url_effective} %{http_code}\n' \
+    "$(sso_origin)/api/session/openid/auth"
 }
 
 api() { local path="$1"; shift; curl -sS --noproxy '*' -f --max-time 60 -b "$SMOKE_JAR" -c "$SMOKE_JAR" "$(sso_origin)$path" "$@"; }
 
-api_retry() { # api 一把，失败就重走登录再试一次；输出成功那次的响应
-  local out
-  out="$(api "$@" 2>/dev/null)" && { printf '%s' "$out"; return 0; }
-  sso_relogin >/dev/null 2>&1 || { echo "重走登录失败"; return 1; }
-  api "$@" 2>/dev/null
+api_retry() { # api 一把，失败就重走登录再试一次；失败时把 HTTP 码和响应开头打进输出（进冒烟日志）
+  local out rc
+  out="$(api "$@" 2>&1)" && { printf '%s' "$out"; return 0; }
+  rc=$?
+  echo "api 失败（curl 退出 $rc）：$(head -c 200 <<<"$out")"
+  sso_relogin >&2 || { echo "重走登录失败"; return 1; }
+  out="$(api "$@" 2>&1)" && { printf '%s' "$out"; return 0; }
+  rc=$?
+  echo "重试仍失败（curl 退出 $rc）：$(head -c 200 <<<"$out")"
+  return 1
 }
 
 web_assert() { grep -q '<title>Traccar</title>'; }
